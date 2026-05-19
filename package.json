@@ -8,6 +8,14 @@
     "start": "cd backend && npm run start",
     "seed": "cd backend && npm run seed"
   },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.14.1"
+  },
   "devDependencies": {
     "concurrently": "^9.1.2"
   }

@@ -8,5 +8,5 @@
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/index.ts" }
   ],
-  "buildCommand": null
+  "buildCommand": "echo 'built by @vercel/node'"
 }
