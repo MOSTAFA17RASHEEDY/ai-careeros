@@ -8,6 +8,7 @@ import resumesRoutes from './routes/resumes'
 import chatRoutes from './routes/chat'
 import skillsRoutes from './routes/skills'
 import authRoutes from './routes/auth'
+import seedRoutes from './routes/seed'
 
 const PORT = process.env.PORT || 3001
 const isDev = process.env.NODE_ENV !== 'production'
@@ -26,6 +27,7 @@ app.get('/api/health', (_req, res) => {
 })
 
 app.use('/api/auth', authRoutes)
+app.use('/api/seed', seedRoutes)
 app.use('/api/dashboard', authMiddleware, dashboardRoutes)
 app.use('/api/resumes', authMiddleware, resumesRoutes)
 app.use('/api/chat', authMiddleware, chatRoutes)
