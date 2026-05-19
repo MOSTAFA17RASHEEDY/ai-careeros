@@ -3,3 +3,5 @@ dist/
 backend/data/
 .env
 *.db
+
+.vercel

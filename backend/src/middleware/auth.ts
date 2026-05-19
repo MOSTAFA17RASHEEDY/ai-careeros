@@ -11,7 +11,7 @@ export interface AuthRequest extends Request {
 }
 
 export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
-  const header = req.headers.authorization
+  const header = (req as any).headers?.authorization
   if (!header || !header.startsWith('Bearer ')) {
     res.status(401).json({ error: 'No token provided' })
     return
