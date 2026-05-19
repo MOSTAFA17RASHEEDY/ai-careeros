@@ -17,7 +17,8 @@ const corsOrigin = process.env.CORS_ORIGIN || (isDev ? 'http://localhost:5173' :
 const app = express()
 
 if (corsOrigin) {
-  app.use(cors({ origin: corsOrigin }))
+  const allowedOrigins = corsOrigin === '*' ? '*' : corsOrigin.replace(/\/+$/, '').split(',').map((s) => s.trim())
+  app.use(cors({ origin: allowedOrigins }))
 }
 
 app.use(express.json())
