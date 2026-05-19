@@ -1,5 +1,6 @@
 import { Router } from 'express'
-import { getDb } from '../db/schema'
+import { connectDb } from '../db/connection'
+import { Skill } from '../db/models'
 
 const router = Router()
 
@@ -33,14 +34,8 @@ const targetRoleSkills: Record<string, { name: string; required: number }[]> = {
 
 router.get('/', async (_req, res) => {
   try {
-    const db = await getDb()
-    const result = db.exec('SELECT name, level FROM skills ORDER BY name')[0]
-    const skills = result
-      ? result.values.map((row) => ({
-          name: String(row[0]),
-          level: Number(row[1]),
-        }))
-      : []
+    await connectDb()
+    const skills = await Skill.find().sort({ name: 1 })
     res.json(skills)
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch skills' })
@@ -55,11 +50,12 @@ router.post('/analyze', async (req, res) => {
       return
     }
 
-    const db = await getDb()
-    const currentResult = db.exec('SELECT name, level FROM skills')[0]
-    const currentSkills = currentResult
-      ? Object.fromEntries(currentResult.values.map((row) => [String(row[0]), Number(row[1])]))
-      : {}
+    await connectDb()
+    const skillDocs = await Skill.find()
+    const currentSkills: Record<string, number> = {}
+    for (const s of skillDocs) {
+      currentSkills[s.name] = s.level
+    }
 
     const required = targetRoleSkills[targetRole]
     if (!required) {

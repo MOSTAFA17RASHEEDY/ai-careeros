@@ -1,6 +1,7 @@
 import { Router } from 'express'
-import { getDb, saveDb } from '../db/schema'
-import { randomUUID } from 'crypto'
+import { connectDb } from '../db/connection'
+import { Conversation, Message } from '../db/models'
+import mongoose from 'mongoose'
 
 const router = Router()
 
@@ -15,21 +16,20 @@ const aiReplies = [
 
 router.get('/conversations', async (_req, res) => {
   try {
-    const db = await getDb()
-    const result = db.exec(`
-      SELECT c.id, c.title, c.updated,
-        (SELECT text FROM messages WHERE conversation_id = c.id ORDER BY time DESC LIMIT 1) as last_message
-      FROM conversations c ORDER BY c.updated DESC
-    `)[0]
-    const conversations = result
-      ? result.values.map((row) => ({
-          id: String(row[0]),
-          title: String(row[1]),
-          lastMessage: String(row[3] || ''),
-          time: String(row[2]),
-        }))
-      : []
-    res.json(conversations)
+    await connectDb()
+    const conversations = await Conversation.find().sort({ updatedAt: -1 }).lean()
+    const result = await Promise.all(
+      conversations.map(async (c) => {
+        const lastMsg = await Message.findOne({ conversationId: c._id }).sort({ time: -1 }).lean()
+        return {
+          id: c._id,
+          title: c.title,
+          lastMessage: lastMsg?.text || '',
+          time: c.updatedAt,
+        }
+      })
+    )
+    res.json(result)
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch conversations' })
   }
@@ -37,20 +37,20 @@ router.get('/conversations', async (_req, res) => {
 
 router.get('/conversations/:id', async (req, res) => {
   try {
-    const db = await getDb()
-    const result = db.exec(
-      'SELECT id, role, text, time FROM messages WHERE conversation_id = ? ORDER BY time ASC',
-      [req.params.id]
-    )[0]
-    const messages = result
-      ? result.values.map((row) => ({
-          id: String(row[0]),
-          role: String(row[1]),
-          text: String(row[2]),
-          time: String(row[3]),
-        }))
-      : []
-    res.json(messages)
+    await connectDb()
+    const messages = await Message.find({
+      conversationId: new mongoose.Types.ObjectId(String(req.params.id)),
+    })
+      .sort({ time: 1 })
+      .lean()
+    res.json(
+      messages.map((m) => ({
+        id: m._id,
+        role: m.role,
+        text: m.text,
+        time: m.time,
+      }))
+    )
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch messages' })
   }
@@ -63,27 +63,30 @@ router.post('/messages', async (req, res) => {
       res.status(400).json({ error: 'conversationId and text are required' })
       return
     }
-    const db = await getDb()
-    const userMsgId = randomUUID()
-    const now = new Date().toISOString()
-    db.run(
-      'INSERT INTO messages (id, conversation_id, role, text, time) VALUES (?, ?, ?, ?, ?)',
-      [userMsgId, conversationId, 'user', text, now]
-    )
+
+    await connectDb()
+
+    const convObjectId = new mongoose.Types.ObjectId(String(conversationId))
+    const userMsg = await Message.create({
+      conversationId: convObjectId,
+      role: 'user',
+      text,
+      time: new Date(),
+    })
 
     const reply = aiReplies[Math.floor(Math.random() * aiReplies.length)]
-    const aiMsgId = randomUUID()
-    db.run(
-      'INSERT INTO messages (id, conversation_id, role, text, time) VALUES (?, ?, ?, ?, ?)',
-      [aiMsgId, conversationId, 'assistant', reply, new Date(Date.now() + 1000).toISOString()]
-    )
+    const aiMsg = await Message.create({
+      conversationId: convObjectId,
+      role: 'assistant',
+      text: reply,
+      time: new Date(Date.now() + 1000),
+    })
 
-    db.run("UPDATE conversations SET updated = datetime('now') WHERE id = ?", [conversationId])
-    saveDb()
+    await Conversation.findByIdAndUpdate(conversationId, { updatedAt: new Date() })
 
     res.status(201).json({
-      userMessage: { id: userMsgId, role: 'user', text, time: now },
-      aiMessage: { id: aiMsgId, role: 'assistant', text: reply, time: new Date(Date.now() + 1000).toISOString() },
+      userMessage: { id: userMsg._id, role: 'user', text, time: userMsg.time },
+      aiMessage: { id: aiMsg._id, role: 'assistant', text: reply, time: aiMsg.time },
     })
   } catch (err) {
     res.status(500).json({ error: 'Failed to send message' })

@@ -1,23 +1,19 @@
 import { Router } from 'express'
-import { getDb } from '../db/schema'
+import { connectDb } from '../db/connection'
+import { ActivityLog } from '../db/models'
 
 const router = Router()
 
 router.get('/stats', async (_req, res) => {
   try {
-    const db = await getDb()
-    const activity = db.exec(`
-      SELECT id, action, detail, time FROM activity_log ORDER BY time DESC LIMIT 5
-    `)[0]
-
-    const recentActivity = activity
-      ? activity.values.map((row) => ({
-          id: row[0],
-          action: row[1],
-          detail: row[2],
-          time: row[3],
-        }))
-      : []
+    await connectDb()
+    const activityDocs = await ActivityLog.find().sort({ time: -1 }).limit(5)
+    const recentActivity = activityDocs.map((a) => ({
+      id: a._id,
+      action: a.action,
+      detail: a.detail,
+      time: a.time,
+    }))
 
     const stats = [
       { label: 'Resume Score', value: '78', unit: '/100', trend: '+12', color: 'bg-blue-500' },

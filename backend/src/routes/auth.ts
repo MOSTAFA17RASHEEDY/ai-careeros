@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
-import { getDb, saveDb } from '../db/schema'
+import { connectDb } from '../db/connection'
+import { User } from '../db/models'
 import { generateToken, authMiddleware, type AuthRequest } from '../middleware/auth'
-import { randomUUID } from 'crypto'
 
 const router = Router()
 
@@ -18,21 +18,18 @@ router.post('/signup', async (req, res) => {
       return
     }
 
-    const db = await getDb()
-    const existing = db.exec('SELECT id FROM users WHERE email = ?', [email])[0]
-    if (existing && existing.values.length) {
+    await connectDb()
+    const existing = await User.findOne({ email })
+    if (existing) {
       res.status(409).json({ error: 'Email already in use' })
       return
     }
 
-    const id = randomUUID()
     const passwordHash = await bcrypt.hash(password, 10)
-    db.run('INSERT INTO users (id, name, email, password_hash) VALUES (?, ?, ?, ?)',
-      [id, name, email, passwordHash])
-    saveDb()
+    const user = await User.create({ name, email, passwordHash })
 
-    const token = generateToken(id, name)
-    res.status(201).json({ token, user: { id, name, email } })
+    const token = generateToken(String(user._id), user.name)
+    res.status(201).json({ token, user: { id: user._id, name: user.name, email: user.email } })
   } catch (err) {
     res.status(500).json({ error: 'Failed to create account' })
   }
@@ -46,22 +43,21 @@ router.post('/login', async (req, res) => {
       return
     }
 
-    const db = await getDb()
-    const result = db.exec('SELECT id, name, email, password_hash FROM users WHERE email = ?', [email])[0]
-    if (!result || !result.values.length) {
+    await connectDb()
+    const user = await User.findOne({ email })
+    if (!user) {
       res.status(401).json({ error: 'Invalid email or password' })
       return
     }
 
-    const row = result.values[0] as any[]
-    const valid = await bcrypt.compare(password, String(row[3]))
+    const valid = await bcrypt.compare(password, user.passwordHash)
     if (!valid) {
       res.status(401).json({ error: 'Invalid email or password' })
       return
     }
 
-    const token = generateToken(String(row[0]), String(row[1]))
-    res.json({ token, user: { id: row[0], name: row[1], email: row[2] } })
+    const token = generateToken(String(user._id), user.name)
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email } })
   } catch (err) {
     res.status(500).json({ error: 'Failed to log in' })
   }
