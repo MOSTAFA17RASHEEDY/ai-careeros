@@ -1,0 +1,14 @@
+{
+  "name": "ai-careeros",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"cd backend && npm run dev\" \"cd landing-page && npm run dev\"",
+    "build": "cd landing-page && npm run build && cd ../backend && npm run build",
+    "start": "cd backend && npm run start",
+    "seed": "cd backend && npm run seed"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
