@@ -1,5 +1,6 @@
 {
   "buildCommand": "echo 'built by vercel/node'",
+  "outputDirectory": "public",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api" }
   ]
