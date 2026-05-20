@@ -1,3 +1,8 @@
-export default async function handler(req: any, res: any) {
-  res.status(200).json({ status: 'ok', method: req.method, path: req.url })
-}
+const express = require('express')
+const app = express()
+
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }))
+
+app.listen(3000, () => {})
+
+module.exports = app
