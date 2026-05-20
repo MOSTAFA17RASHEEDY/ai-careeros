@@ -1,7 +1,6 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
-import path from 'path'
 import { connectDb } from './db/connection'
 import { authMiddleware } from './middleware/auth'
 import dashboardRoutes from './routes/dashboard'
@@ -19,10 +18,24 @@ const corsOrigin = process.env.CORS_ORIGIN || (isDev ? 'http://localhost:5173' :
 
 const app = express()
 
-if (corsOrigin) {
-  const allowedOrigins = corsOrigin === '*' ? '*' : corsOrigin.replace(/\/+$/, '').split(',').map((s) => s.trim())
-  app.use(cors({ origin: allowedOrigins }))
-}
+app.use((req, res, next) => {
+  const origin = req.headers.origin
+  if (origin && (corsOrigin === '*' || corsOrigin.split(',').map(s => s.trim()).includes(origin))) {
+    res.setHeader('Access-Control-Allow-Origin', corsOrigin === '*' ? origin : corsOrigin)
+  } else if (corsOrigin === '*') {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*')
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  if (req.method === 'OPTIONS') return res.sendStatus(204)
+  next()
+})
+
+app.use(cors({
+  origin: corsOrigin === '*' ? true : corsOrigin.split(',').map(s => s.trim()),
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}))
 
 app.use(express.json())
 
