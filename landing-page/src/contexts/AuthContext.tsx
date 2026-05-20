@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { useNavigate } from 'react-router-dom'
 
 const rawBase = import.meta.env.VITE_API_URL || ''
-const API_BASE = rawBase ? `${rawBase.replace(/\/+$/, '')}/api` : '/api'
+const API_BASE = rawBase ? (rawBase.startsWith('/') ? rawBase : `${rawBase.replace(/\/+$/, '')}/api`) : '/api'
 
 interface User {
   id: string
