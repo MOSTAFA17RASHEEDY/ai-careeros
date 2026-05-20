@@ -14,29 +14,10 @@ import seedRoutes from './routes/seed'
 
 const PORT = process.env.PORT || 3001
 const isDev = process.env.NODE_ENV !== 'production'
-const corsOrigin = process.env.CORS_ORIGIN || (isDev ? 'http://localhost:5173' : '*')
 
 const app = express()
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin
-  if (origin && (corsOrigin === '*' || corsOrigin.split(',').map(s => s.trim()).includes(origin))) {
-    res.setHeader('Access-Control-Allow-Origin', corsOrigin === '*' ? origin : corsOrigin)
-  } else if (corsOrigin === '*') {
-    res.setHeader('Access-Control-Allow-Origin', origin || '*')
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  if (req.method === 'OPTIONS') return res.sendStatus(204)
-  next()
-})
-
-app.use(cors({
-  origin: corsOrigin === '*' ? true : corsOrigin.split(',').map(s => s.trim()),
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}))
-
+app.use(cors())
 app.use(express.json())
 
 app.get('/api/health', (_req, res) => {
