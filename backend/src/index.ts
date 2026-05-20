@@ -1,15 +1,12 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
-import path from 'path'
 import { connectDb } from './db/connection'
 import { authMiddleware } from './middleware/auth'
 import dashboardRoutes from './routes/dashboard'
 import resumesRoutes from './routes/resumes'
 import chatRoutes from './routes/chat'
-import aiRoutes from './routes/ai'
 import skillsRoutes from './routes/skills'
-import goalsRoutes from './routes/goals'
 import authRoutes from './routes/auth'
 import seedRoutes from './routes/seed'
 
@@ -35,9 +32,7 @@ app.use('/api/seed', seedRoutes)
 app.use('/api/dashboard', authMiddleware, dashboardRoutes)
 app.use('/api/resumes', authMiddleware, resumesRoutes)
 app.use('/api/chat', authMiddleware, chatRoutes)
-app.use('/api/ai', authMiddleware, aiRoutes)
 app.use('/api/skills', authMiddleware, skillsRoutes)
-app.use('/api/goals', authMiddleware, goalsRoutes)
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' })
