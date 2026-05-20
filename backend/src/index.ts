@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
+import path from 'path'
 import { connectDb } from './db/connection'
 import { authMiddleware } from './middleware/auth'
 import dashboardRoutes from './routes/dashboard'
@@ -14,10 +15,15 @@ import seedRoutes from './routes/seed'
 
 const PORT = process.env.PORT || 3001
 const isDev = process.env.NODE_ENV !== 'production'
+const corsOrigin = process.env.CORS_ORIGIN || (isDev ? 'http://localhost:5173' : '*')
 
 const app = express()
 
-app.use(cors())
+if (corsOrigin) {
+  const allowedOrigins = corsOrigin === '*' ? '*' : corsOrigin.replace(/\/+$/, '').split(',').map((s) => s.trim())
+  app.use(cors({ origin: allowedOrigins }))
+}
+
 app.use(express.json())
 
 app.get('/api/health', (_req, res) => {
