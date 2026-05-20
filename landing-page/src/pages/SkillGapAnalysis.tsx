@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Check, X as XIcon } from 'lucide-react'
+import { Check, X as XIcon, Sparkles, X } from 'lucide-react'
 import { api, type SkillAnalysis } from '../lib/api'
 
 const targetRoles = [
@@ -15,10 +15,13 @@ export function SkillGapAnalysis() {
   const [role, setRole] = useState('')
   const [analysis, setAnalysis] = useState<SkillAnalysis[] | null>(null)
   const [loading, setLoading] = useState(false)
+  const [aiAdvice, setAiAdvice] = useState<string | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
 
   const handleAnalyze = async (targetRole: string) => {
     setRole(targetRole)
     setLoading(true)
+    setAiAdvice(null)
     try {
       const result = await api.skills.analyze(targetRole)
       setAnalysis(result.analysis)
@@ -26,6 +29,25 @@ export function SkillGapAnalysis() {
       alert(err instanceof Error ? err.message : 'Failed to analyze')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleAiRecommend = async () => {
+    if (!role || !analysis) return
+    setAiLoading(true)
+    setAiAdvice(null)
+    try {
+      const gaps = analysis
+        .filter(s => !s.match)
+        .map(s => `${s.name} (current: ${s.current}%, required: ${s.required}%)`)
+        .join(', ')
+      const content = `Target role: ${role}\nSkill gaps: ${gaps || 'No gaps found - all requirements met.'}`
+      const result = await api.ai.agent('skill-gap', content)
+      setAiAdvice(result.response)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to get AI advice')
+    } finally {
+      setAiLoading(false)
     }
   }
 
@@ -70,55 +92,85 @@ export function SkillGapAnalysis() {
       )}
 
       {analysis && !loading && (
-        <div className="mt-8 space-y-3">
-          {analysis.map((skill, i) => {
-            const gap = skill.required - skill.current
-            return (
+        <>
+          <div className="mt-8 space-y-3">
+            {analysis.map((skill, i) => {
+              const gap = skill.required - skill.current
+              return (
+                <motion.div
+                  key={skill.name}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: 0.05 * i }}
+                  className="rounded-xl border border-gray-200 p-4"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      {skill.match ? (
+                        <Check size={16} className="text-green-500" />
+                      ) : (
+                        <XIcon size={16} className="text-red-400" />
+                      )}
+                      <span className="text-sm font-medium text-gray-900">{skill.name}</span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      <span className="font-medium text-gray-700">{skill.current}%</span>
+                      {' → '}
+                      <span className="font-medium text-gray-700">{skill.required}%</span>
+                      {gap > 0 && (
+                        <span className="ml-1 text-red-500">({gap}% gap)</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-100">
+                    <div
+                      className="h-2 rounded-full bg-blue-500"
+                      style={{ width: `${skill.current}%` }}
+                    />
+                  </div>
+                  <div className="mt-1 h-2 rounded-full bg-gray-100">
+                    <div
+                      className={`h-2 rounded-full ${skill.match ? 'bg-green-400' : 'bg-red-300'}`}
+                      style={{ width: `${skill.required}%` }}
+                    />
+                  </div>
+                  <div className="mt-1 flex justify-between text-xs text-gray-400">
+                    <span>Current</span>
+                    <span>Required</span>
+                  </div>
+                </motion.div>
+              )
+            })}
+          </div>
+
+          <div className="mt-6">
+            <button
+              onClick={handleAiRecommend}
+              disabled={aiLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+            >
+              <Sparkles size={16} />
+              {aiLoading ? 'Getting AI recommendations...' : 'AI Learning Roadmap'}
+            </button>
+
+            {aiAdvice && (
               <motion.div
-                key={skill.name}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: 0.05 * i }}
-                className="rounded-xl border border-gray-200 p-4"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 relative rounded-xl bg-purple-50 border border-purple-100 p-5 text-sm text-gray-700"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    {skill.match ? (
-                      <Check size={16} className="text-green-500" />
-                    ) : (
-                      <XIcon size={16} className="text-red-400" />
-                    )}
-                    <span className="text-sm font-medium text-gray-900">{skill.name}</span>
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    <span className="font-medium text-gray-700">{skill.current}%</span>
-                    {' → '}
-                    <span className="font-medium text-gray-700">{skill.required}%</span>
-                    {gap > 0 && (
-                      <span className="ml-1 text-red-500">({gap}% gap)</span>
-                    )}
-                  </div>
-                </div>
-                <div className="h-2 rounded-full bg-gray-100">
-                  <div
-                    className="h-2 rounded-full bg-blue-500"
-                    style={{ width: `${skill.current}%` }}
-                  />
-                </div>
-                <div className="mt-1 h-2 rounded-full bg-gray-100">
-                  <div
-                    className={`h-2 rounded-full ${skill.match ? 'bg-green-400' : 'bg-red-300'}`}
-                    style={{ width: `${skill.required}%` }}
-                  />
-                </div>
-                <div className="mt-1 flex justify-between text-xs text-gray-400">
-                  <span>Current</span>
-                  <span>Required</span>
-                </div>
+                <button
+                  onClick={() => setAiAdvice(null)}
+                  className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+                >
+                  <X size={14} />
+                </button>
+                <div className="font-medium text-purple-900 mb-2">AI-Powered Learning Roadmap</div>
+                <div className="whitespace-pre-wrap leading-relaxed">{aiAdvice}</div>
               </motion.div>
-            )
-          })}
-        </div>
+            )}
+          </div>
+        </>
       )}
 
       {!analysis && !loading && (

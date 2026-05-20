@@ -1,20 +1,21 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, FileText, MessageSquare, Target, X, LogOut } from 'lucide-react'
+import { LayoutDashboard, FileText, Sparkles, Target, X, LogOut, BookOpen } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
 const iconMap: Record<string, ReactNode> = {
   LayoutDashboard: <LayoutDashboard size={20} />,
   FileText: <FileText size={20} />,
-  MessageSquare: <MessageSquare size={20} />,
+  Sparkles: <Sparkles size={20} />,
   Target: <Target size={20} />,
+  BookOpen: <BookOpen size={20} />,
 }
 
 const links = [
   { label: 'Dashboard', href: '/app/dashboard', icon: 'LayoutDashboard' },
   { label: 'Resumes', href: '/app/resumes', icon: 'FileText' },
-  { label: 'Career Coach', href: '/app/coach', icon: 'MessageSquare' },
-  { label: 'Skill Gap', href: '/app/skills', icon: 'Target' },
+  { label: 'Career Assistant', href: '/app/coach', icon: 'Sparkles' },
+  { label: 'Skills', href: '/app/skills', icon: 'Target' },
 ]
 
 interface SidebarProps {

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import { connectDb } from '../db/connection'
-import { User } from '../db/models'
+import { User, TIER_LIMITS } from '../db/models'
 import { generateToken, authMiddleware, type AuthRequest } from '../middleware/auth'
 
 const router = Router()
@@ -26,10 +26,16 @@ router.post('/signup', async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10)
-    const user = await User.create({ name, email, passwordHash })
+    const now = new Date()
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const user = await User.create({ name, email, passwordHash, tier: 'free', aiCallsThisMonth: 0, aiCallMonth: month })
 
     const token = generateToken(String(user._id), user.name)
-    res.status(201).json({ token, user: { id: user._id, name: user.name, email: user.email } })
+    res.status(201).json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email, tier: user.tier },
+      usage: { aiCallsThisMonth: 0, limit: TIER_LIMITS.free.aiMessagesPerMonth },
+    })
   } catch (err) {
     res.status(500).json({ error: 'Failed to create account' })
   }
@@ -56,15 +62,49 @@ router.post('/login', async (req, res) => {
       return
     }
 
+    const now = new Date()
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    if (user.aiCallMonth !== month) {
+      user.aiCallsThisMonth = 0
+      user.aiCallMonth = month
+      await user.save()
+    }
+
     const token = generateToken(String(user._id), user.name)
-    res.json({ token, user: { id: user._id, name: user.name, email: user.email } })
+    const limit = TIER_LIMITS[user.tier].aiMessagesPerMonth
+    res.json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email, tier: user.tier },
+      usage: { aiCallsThisMonth: user.aiCallsThisMonth, limit },
+    })
   } catch (err) {
     res.status(500).json({ error: 'Failed to log in' })
   }
 })
 
-router.get('/me', authMiddleware, (req: AuthRequest, res) => {
-  res.json({ user: { id: req.userId, name: req.userName } })
+router.get('/me', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    await connectDb()
+    const user = await User.findById(req.userId)
+    if (!user) {
+      res.status(404).json({ error: 'User not found' })
+      return
+    }
+    const now = new Date()
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    if (user.aiCallMonth !== month) {
+      user.aiCallsThisMonth = 0
+      user.aiCallMonth = month
+      await user.save()
+    }
+    const limit = TIER_LIMITS[user.tier].aiMessagesPerMonth
+    res.json({
+      user: { id: user._id, name: user.name, email: user.email, tier: user.tier },
+      usage: { aiCallsThisMonth: user.aiCallsThisMonth, limit },
+    })
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch user' })
+  }
 })
 
 export default router

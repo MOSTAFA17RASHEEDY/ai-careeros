@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Check } from 'lucide-react'
 import { content } from '../data/content'
@@ -78,8 +79,8 @@ export function Pricing() {
                   </li>
                 ))}
               </ul>
-              <a
-                href="#"
+              <Link
+                to={plan.name === 'Enterprise' ? '/signup?plan=enterprise' : plan.name === 'Pro' ? '/signup?plan=pro' : '/signup'}
                 className={`mt-8 block text-center py-3 px-6 rounded-lg font-medium text-sm transition-colors ${
                   plan.highlighted
                     ? 'bg-white text-gray-900 hover:bg-gray-100'
@@ -87,7 +88,7 @@ export function Pricing() {
                 }`}
               >
                 {plan.cta}
-              </a>
+              </Link>
             </motion.div>
           ))}
         </motion.div>
