@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Target, TrendingUp, BookOpen, FileText, Clock, CheckCircle, Zap, Award, Brain } from 'lucide-react'
-
-const API_BASE = import.meta.env.VITE_API_URL || '/api'
+import { API_BASE } from '../../lib/api'
 
 interface Goal { id: string; title: string; description?: string; progress: number; deadline?: string; steps?: { text: string; done: boolean }[]; resumeId?: string; createdAt: string }
 interface Skill { name: string; level: number }

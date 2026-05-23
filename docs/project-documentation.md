@@ -60,6 +60,7 @@ ai-careeros/
 ## Phase 1: Initial Project Setup (Scaffolding)
 
 ### Decision: Why This Stack?
+
 - **React 18 + TypeScript** — Type-safe, modern, widely supported
 - **Vite** — Fast dev server, native ESM, HMR
 - **Tailwind CSS** — Utility-first, rapid UI development, responsive
@@ -71,6 +72,7 @@ ai-careeros/
 - **JWT + bcryptjs** — Stateless auth, pure JS (no native deps)
 
 ### Files Created
+
 - `landing-page/package.json` — Vite + React dependencies
 - `landing-page/tsconfig.json` — TypeScript strict, path aliases
 - `landing-page/vite.config.ts` — Vite config with Tailwind + React plugin
@@ -109,6 +111,7 @@ ai-careeros/
 ## Phase 2: Frontend Development
 
 ### Landing Page (`/`)
+
 Built with Framer Motion scroll-reveal animations:
 
 - **Navbar** — Logo + nav links + Sign In link
@@ -120,6 +123,7 @@ Built with Framer Motion scroll-reveal animations:
 - **Footer** — Links, copyright
 
 ### App Pages (under `/app/*`)
+
 All wrapped in `ProtectedRoute` + `AppLayout` (sidebar + header):
 
 - **Dashboard** (`/app/dashboard`) — Live stats cards + recent activity list + quick action buttons
@@ -128,10 +132,12 @@ All wrapped in `ProtectedRoute` + `AppLayout` (sidebar + header):
 - **Skill Gap Analysis** (`/app/skills`) — Target role buttons → API analyze → gap list
 
 ### Auth Pages
+
 - **Login** (`/login`) — Email + password form
 - **Signup** (`/signup`) — Name + email + password form
 
 ### Key Frontend Files
+
 - `landing-page/src/contexts/AuthContext.tsx` — Auth state management with localStorage token persistence, auto `/auth/me` verification on load
 - `landing-page/src/lib/api.ts` — Typed fetch wrapper with auto Bearer token attachment
 - `landing-page/src/components/ProtectedRoute.tsx` — Route guard, redirects to `/login` if unauthenticated
@@ -139,6 +145,7 @@ All wrapped in `ProtectedRoute` + `AppLayout` (sidebar + header):
 - `landing-page/src/components/Sidebar.tsx` — Nav links + user info + sign out
 
 ### Data Flow
+
 ```
 UI Component → api.ts (fetch + token) → Vercel Serverless → Express Routes → Mongoose → MongoDB Atlas
 ```
@@ -148,6 +155,7 @@ UI Component → api.ts (fetch + token) → Vercel Serverless → Express Routes
 ## Phase 3: Backend Development
 
 ### Architecture
+
 - Express 5 app exported as Vercel serverless function (`api/index.ts`)
 - All routes prefixed with `/api`
 - JWT auth middleware on protected routes (all except `/api/auth/*` and `/api/health` and `/api/seed`)
@@ -155,26 +163,27 @@ UI Component → api.ts (fetch + token) → Vercel Serverless → Express Routes
 
 ### API Endpoints
 
-| Method | Route | Auth | Purpose |
-|--------|-------|------|---------|
-| GET | `/api/health` | No | Health check |
-| POST | `/api/seed` | No | One-click database seeding |
-| POST | `/api/auth/signup` | No | Create account |
-| POST | `/api/auth/login` | No | Login, returns JWT |
-| GET | `/api/auth/me` | Yes | Verify token, get user |
-| GET | `/api/dashboard/stats` | Yes | Stats + recent activity |
-| GET | `/api/resumes` | Yes | List all resumes |
-| GET | `/api/resumes/:id` | Yes | Get single resume |
-| POST | `/api/resumes` | Yes | Create resume |
-| PUT | `/api/resumes/:id` | Yes | Update resume |
-| DELETE | `/api/resumes/:id` | Yes | Delete resume |
-| GET | `/api/chat/conversations` | Yes | List conversations with last message |
-| GET | `/api/chat/conversations/:id` | Yes | Get messages for conversation |
-| POST | `/api/chat/messages` | Yes | Send message + get AI reply |
-| GET | `/api/skills` | Yes | List all skills |
-| POST | `/api/skills/analyze` | Yes | Analyze skills against target role |
+| Method | Route                         | Auth | Purpose                              |
+| ------ | ----------------------------- | ---- | ------------------------------------ |
+| GET    | `/api/health`                 | No   | Health check                         |
+| POST   | `/api/seed`                   | No   | One-click database seeding           |
+| POST   | `/api/auth/signup`            | No   | Create account                       |
+| POST   | `/api/auth/login`             | No   | Login, returns JWT                   |
+| GET    | `/api/auth/me`                | Yes  | Verify token, get user               |
+| GET    | `/api/dashboard/stats`        | Yes  | Stats + recent activity              |
+| GET    | `/api/resumes`                | Yes  | List all resumes                     |
+| GET    | `/api/resumes/:id`            | Yes  | Get single resume                    |
+| POST   | `/api/resumes`                | Yes  | Create resume                        |
+| PUT    | `/api/resumes/:id`            | Yes  | Update resume                        |
+| DELETE | `/api/resumes/:id`            | Yes  | Delete resume                        |
+| GET    | `/api/chat/conversations`     | Yes  | List conversations with last message |
+| GET    | `/api/chat/conversations/:id` | Yes  | Get messages for conversation        |
+| POST   | `/api/chat/messages`          | Yes  | Send message + get AI reply          |
+| GET    | `/api/skills`                 | Yes  | List all skills                      |
+| POST   | `/api/skills/analyze`         | Yes  | Analyze skills against target role   |
 
 ### Auth Flow
+
 ```
 Login → POST /api/auth/login → { token, user }
 Token stored in localStorage
@@ -183,6 +192,7 @@ JWT contains { userId, name }, expires 7 days
 ```
 
 ### MongoDB Models
+
 - **User** — name, email (unique), passwordHash, createdAt
 - **Resume** — title, target, score, versions, content, updatedAt, createdAt
 - **Conversation** — title, updatedAt, createdAt
@@ -195,11 +205,13 @@ JWT contains { userId, name }, expires 7 days
 ## Phase 4: Database Migration (SQLite → MongoDB)
 
 ### Why the Migration?
+
 - Initially used `sql.js` (WASM-based SQLite) for simplicity
 - Vercel serverless functions have ephemeral filesystems — SQLite file writes are lost between invocations
 - MongoDB Atlas (serverless-compatible) works natively with Vercel
 
 ### What Changed
+
 - `backend/src/db/schema.ts` → deleted (was sql.js init + schema creation)
 - `backend/src/db/connection.ts` → new (MongoDB singleton with Vercel caching pattern)
 - `backend/src/db/models.ts` → new (Mongoose schemas for all collections)
@@ -212,6 +224,7 @@ JWT contains { userId, name }, expires 7 days
 ## Phase 5: Vercel Deployment
 
 ### Two Vercel Projects
+
 1. **Frontend** (`ai-careeros`) — deployed from `landing-page/` directory
    - URL: `https://ai-careeros.vercel.app`
    - Env: `VITE_API_URL` = API project URL + `/api`
@@ -220,6 +233,7 @@ JWT contains { userId, name }, expires 7 days
    - Env: `MONGODB_URI`, `JWT_SECRET`, `CORS_ORIGIN`
 
 ### Deployment Issues & Fixes
+
 1. **Build command failed** — Root `package.json` build script tried to build frontend (TypeScript not available). Fixed by setting `"buildCommand": "echo 'built by @vercel/node'"` in root `vercel.json` (Vercel's `@vercel/node` runtime auto-compiles TypeScript serverless functions via esbuild).
 
 2. **"No Output Directory named public"** — Vercel requires an output directory. Fixed by adding a `public/index.html` file (serves as static output placeholder; all requests are rewritten to the API function anyway).
@@ -231,6 +245,7 @@ JWT contains { userId, name }, expires 7 days
 5. **404 on API calls** — `VITE_API_URL` missing `/api` suffix on frontend project. Fixed by correcting the env var value.
 
 ### Key Configuration Files
+
 - `landing-page/vercel.json` — Framework: Vite, SPA rewrites
 - `vercel.json` (root) — Serverless function config, rewrites to API, no-op build
 
@@ -239,12 +254,14 @@ JWT contains { userId, name }, expires 7 days
 ## Phase 6: Git & GitHub
 
 ### Repository
+
 - **URL:** `https://github.com/MOSTAFA17RASHEEDY/ai-careeros`
 - **Branch:** `main`
 - **First commit:** Initial scaffolding
 - **Final commit:** Fix TypeScript errors + CORS normalization
 
 ### Key Commits
+
 ```
 c54dfe0 — fix: add public/ dir so Vercel has output to deploy
 4b00bf0 — fix: move API deps to root package.json for Vercel
@@ -258,10 +275,12 @@ a08f452 — migrate from sql.js to MongoDB/Mongoose + Vercel restructure
 ## How to Run Locally
 
 ### Prerequisites
+
 - Node.js 18+
 - MongoDB (local or Atlas)
 
 ### Setup
+
 ```bash
 # Clone
 git clone https://github.com/MOSTAFA17RASHEEDY/ai-careeros.git
@@ -289,6 +308,7 @@ npm run dev
 ## How to Deploy
 
 ### Frontend (Vercel)
+
 1. New project → Import `ai-careeros` repo
 2. Root directory: `landing-page/`
 3. Framework: Vite (auto-detected)
@@ -296,6 +316,7 @@ npm run dev
 5. Deploy
 
 ### API (Vercel)
+
 1. New project → Import `ai-careeros` repo
 2. Root directory: `.` (default)
 3. Framework: Other
@@ -322,15 +343,15 @@ npm run dev
 
 ## Technical Decisions Log
 
-| Decision | Rationale |
-|----------|-----------|
-| Vite over CRA | Faster builds, native ESM, smaller output |
-| Express 5 | Latest Express, better async error handling |
-| Mongoose over raw MongoDB | Schema validation, type safety, cleaner API |
-| bcryptjs over bcrypt | Pure JS, no native compilation needed |
-| JWT over sessions | Stateless, works with serverless |
-| Framer Motion over CSS animations | Declarative, scroll-reveal, staggered children |
-| Tailwind over styled-components | Faster to iterate, smaller bundle, utility-first |
-| Two Vercel projects (frontend + API) | Independent scaling, simpler config than monorepo |
-| Vercel serverless over Express on VPS | Free tier, auto-scaling, no server management |
-| Path of least resistance for DB | Started with sql.js (simple), migrated to MongoDB (Vercel-compatible) |
+| Decision                              | Rationale                                                             |
+| ------------------------------------- | --------------------------------------------------------------------- |
+| Vite over CRA                         | Faster builds, native ESM, smaller output                             |
+| Express 5                             | Latest Express, better async error handling                           |
+| Mongoose over raw MongoDB             | Schema validation, type safety, cleaner API                           |
+| bcryptjs over bcrypt                  | Pure JS, no native compilation needed                                 |
+| JWT over sessions                     | Stateless, works with serverless                                      |
+| Framer Motion over CSS animations     | Declarative, scroll-reveal, staggered children                        |
+| Tailwind over styled-components       | Faster to iterate, smaller bundle, utility-first                      |
+| Two Vercel projects (frontend + API)  | Independent scaling, simpler config than monorepo                     |
+| Vercel serverless over Express on VPS | Free tier, auto-scaling, no server management                         |
+| Path of least resistance for DB       | Started with sql.js (simple), migrated to MongoDB (Vercel-compatible) |

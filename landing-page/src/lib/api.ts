@@ -1,5 +1,5 @@
 const rawBase = import.meta.env.VITE_API_URL || ''
-const API_BASE = rawBase ? (rawBase.startsWith('/') ? rawBase : `${rawBase.replace(/\/+$/, '')}/api`) : '/api'
+export const API_BASE = rawBase ? (rawBase.startsWith('/') ? rawBase : `${rawBase.replace(/\/+$/, '')}/api`) : '/api'
 
 function getToken(): string | null {
   return localStorage.getItem('token')
