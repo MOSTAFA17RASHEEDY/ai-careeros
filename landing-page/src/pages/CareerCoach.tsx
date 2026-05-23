@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, User, Bot, Plus, CheckCircle, FileText, Brain, Target, BookOpen, Sparkles, ArrowRight } from 'lucide-react'
-import { api, type OrchestrateResponse, type AgentAction } from '../lib/api'
+import { api, API_BASE, type OrchestrateResponse, type AgentAction } from '../lib/api'
 import { ServicePanel } from '../components/agents/ServicePanel'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -77,7 +77,7 @@ export function CareerCoach() {
 
   const handleNew = async () => {
     try {
-      const res = await fetch('/api/chat/conversations', {
+      const res = await fetch(`${API_BASE}/chat/conversations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({}),
