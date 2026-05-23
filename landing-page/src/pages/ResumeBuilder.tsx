@@ -5,7 +5,7 @@ import {
   Building2, GraduationCap, Wrench, FolderGit2, UserSquare2,
   PlusCircle, Check,
 } from 'lucide-react'
-import { api, type Resume, type ResumeSections, type Skill } from '../lib/api'
+import { api, API_BASE, type Resume, type ResumeSections, type Skill } from '../lib/api'
 
 function genId() { return Math.random().toString(36).slice(2, 10) }
 
@@ -239,7 +239,7 @@ export function ResumeBuilder() {
         text: `Improve the "${section}" section of my resume for the target role "${selected.target}". Current content: ${JSON.stringify(currentData)}. Return ONLY the raw improved value for this section in JSON format, wrapped in \`\`\`json ... \`\`\`. Do NOT wrap it in an object with the section name.`,
         conversationId: undefined,
       })
-      const res = await fetch('/api/ai/orchestrate', {
+      const res = await fetch(`${API_BASE}/ai/orchestrate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: payload,
