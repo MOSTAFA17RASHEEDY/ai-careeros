@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { connectDb } from '../db/connection'
 import mongoose from 'mongoose'
-import { analyzeWithAgent } from '../services/ai'
+import { analyzeWithAgent, improveResumeSection } from '../services/ai'
 import { orchestrate } from '../services/orchestrator'
 import { CareerGoal, PracticeSession, Resume, Skill, User, Conversation, Message, TIER_LIMITS } from '../db/models'
 import { authMiddleware, type AuthRequest } from '../middleware/auth'
@@ -141,6 +141,32 @@ router.get('/state/:agent', async (req: AuthRequest, res) => {
     res.json({ agent, data })
   } catch {
     res.status(500).json({ error: 'Failed to fetch agent state' })
+  }
+})
+
+router.post('/improve-resume', async (req: AuthRequest, res) => {
+  try {
+    const { resumeId, section, content, targetRole } = req.body
+    if (!resumeId || !section || content === undefined || !targetRole) {
+      res.status(400).json({ error: 'resumeId, section, content, and targetRole are required' }); return
+    }
+
+    const improved = await improveResumeSection(section, targetRole, JSON.stringify(content))
+    await connectDb()
+    const r = await Resume.findOne({ _id: resumeId, userId: req.userId })
+    if (!r) { res.status(404).json({ error: 'Resume not found' }); return }
+
+    let parsed: any = {}
+    try { parsed = JSON.parse(r.content || '{}') } catch { parsed = {} }
+    parsed[section] = improved
+    r.content = JSON.stringify(parsed)
+    r.versions += 1
+    r.updatedAt = new Date()
+    await r.save()
+
+    res.json({ success: true, section, improved })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to improve resume' })
   }
 })
 

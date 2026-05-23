@@ -5,7 +5,7 @@ import {
   Building2, GraduationCap, Wrench, FolderGit2, UserSquare2,
   PlusCircle, Check,
 } from 'lucide-react'
-import { api, API_BASE, type Resume, type ResumeSections, type Skill } from '../lib/api'
+import { api, type Resume, type ResumeSections, type Skill } from '../lib/api'
 
 function genId() { return Math.random().toString(36).slice(2, 10) }
 
@@ -233,35 +233,8 @@ export function ResumeBuilder() {
     if (!selected) return
     setAiBusySection(section)
     try {
-      const token = localStorage.getItem('token')
-      const currentData = sections[section]
-      const payload = JSON.stringify({
-        text: `Improve the "${section}" section of my resume for the target role "${selected.target}". Current content: ${JSON.stringify(currentData)}. Return ONLY the raw improved value for this section in JSON format, wrapped in \`\`\`json ... \`\`\`. Do NOT wrap it in an object with the section name.`,
-        conversationId: undefined,
-      })
-      const res = await fetch(`${API_BASE}/ai/orchestrate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: payload,
-      })
-      if (!res.ok) return
-      const result = await res.json()
-
-      const parse = (raw: string): any => {
-        const match = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
-        const json = match ? match[1].trim() : raw.trim()
-        return JSON.parse(json)
-      }
-
-      let improved: any
-      try { improved = parse(result.text) } catch { return }
-
-      if (typeof improved === 'object' && improved !== null && !Array.isArray(improved)) {
-        const val = improved[section]
-        if (val !== undefined) improved = val
-      }
-
-      updateSection(section, improved)
+      const result = await api.ai.improveResume(selected.id, section, sections[section], selected.target)
+      updateSection(section, result.improved)
     } catch {} finally { setAiBusySection(null) }
   }
 

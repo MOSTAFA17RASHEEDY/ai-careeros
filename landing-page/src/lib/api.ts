@@ -61,6 +61,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ text, conversationId }),
       }),
+    improveResume: (resumeId: string, section: string, content: any, targetRole: string) =>
+      request<{ success: boolean; section: string; improved: any }>('/ai/improve-resume', {
+        method: 'POST',
+        body: JSON.stringify({ resumeId, section, content, targetRole }),
+      }),
   },
   skills: {
     list: () => request<Skill[]>('/skills'),

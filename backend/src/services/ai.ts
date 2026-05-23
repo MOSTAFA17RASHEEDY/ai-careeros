@@ -309,3 +309,39 @@ export async function analyzeWithAgent(agentType: string, content: string, userI
     return fb()
   }
 }
+
+const IMPROVE_PROMPT = (section: string, targetRole: string, currentContent: string) =>
+  `You are a resume improvement expert. Improve the "${section}" section of a resume for the target role "${targetRole}".
+
+Current content:
+${currentContent}
+
+Return ONLY a JSON object with a single key "improved" containing the improved value. Use \`\`\`json ... \`\`\` wrapping.
+- If the section contains structured data (experience, education, skills, projects), return the array or object structure.
+- If the section is text (summary), return the improved text string.
+- Keep it concise and impactful. Use action verbs and quantify achievements where possible.`
+
+export async function improveResumeSection(
+  section: string,
+  targetRole: string,
+  currentContent: string,
+): Promise<string> {
+  const client = getClient()
+  if (!client) throw new Error('AI not configured')
+
+  const completion = await client.chat.completions.create({
+    model: MODEL_FAST,
+    messages: [
+      { role: 'system', content: 'You are a resume optimization expert. Return ONLY valid JSON.' },
+      { role: 'user', content: IMPROVE_PROMPT(section, targetRole, currentContent) },
+    ],
+    temperature: 0.3,
+    max_tokens: 2048,
+  })
+
+  const text = completion.choices[0]?.message?.content || ''
+  const match = text.match(/```(?:json)?\s*([\s\S]*?)```/)
+  const json = match ? match[1].trim() : text.trim()
+  const parsed = JSON.parse(json)
+  return parsed.improved
+}
