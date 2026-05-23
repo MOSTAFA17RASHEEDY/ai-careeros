@@ -5,8 +5,9 @@ const MODEL_FAST = 'qwen/qwen3-32b'
 const MODEL_DEEP = 'qwen/qwen3-32b'
 const MAX_CONTEXT_CHARS = 12000
 const MAX_VISIBLE_MESSAGES = 8
-const MIN_INTERVAL_MS = 2200
+const MIN_INTERVAL_MS = 500
 const MAX_TOOL_TURNS = 6
+const GHOST_RETRY_MAX = 1
 
 const SYSTEM_PROMPTS: Record<string, string> = {
   'career-coach': `You are CareerCoach, an expert career advisor for software engineers. You help with career growth, salary negotiation, and professional development.
@@ -158,6 +159,8 @@ export interface AgentResponse {
   actions: AgentAction[]
 }
 
+const ACTION_VERBS = ['updated', 'improved', 'added', 'created', 'changed', 'deleted', 'saved', 'set', 'removed', 'fixed', 'wrote', 'modified']
+
 async function callGroqWithTools(
   client: Groq,
   agentType: string,
@@ -171,6 +174,9 @@ async function callGroqWithTools(
   const actions: AgentAction[] = []
 
   const messages = prepareMessages(systemPrompt, userMessages)
+
+  let emptyTurns = 0
+  let ghostRetries = 0
 
   for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
     const ok = await waitForSlot(model)
@@ -189,6 +195,8 @@ async function callGroqWithTools(
     if (!choice) throw new Error('No response')
 
     const msg = choice.message
+    const actionsBefore = actions.length
+
     if (msg.content) messages.push({ role: 'assistant', content: msg.content })
 
     if (choice.finish_reason === 'tool_calls' && msg.tool_calls) {
@@ -198,7 +206,29 @@ async function callGroqWithTools(
         actions.push({ tool: tc.function.name, args, result: result.data || result })
         messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) } as any)
       }
+      emptyTurns = 0
       continue
+    }
+
+    const newTools = actions.length - actionsBefore
+    const lowerContent = (msg.content || '').toLowerCase()
+    const claimsAction = ACTION_VERBS.some(v => lowerContent.includes(v))
+
+    if (newTools === 0 && claimsAction && ghostRetries < GHOST_RETRY_MAX) {
+      ghostRetries++
+      messages.push({
+        role: 'system',
+        content: 'You claimed to have made changes but did not call any tool. You MUST call the appropriate tool to actually perform the change before responding.',
+      })
+      emptyTurns = 0
+      continue
+    }
+
+    if (newTools === 0) {
+      emptyTurns++
+      if (emptyTurns >= 2) break
+    } else {
+      emptyTurns = 0
     }
 
     return { text: msg.content || 'Done.', actions }
