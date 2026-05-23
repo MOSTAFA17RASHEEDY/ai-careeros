@@ -6,7 +6,12 @@ const MAX_VISIBLE_MESSAGES = 8
 const MAX_CONTEXT_CHARS = 12000
 const MIN_INTERVAL_MS = 500
 const MAX_TOOL_TURNS = 6
-const GHOST_RETRY_MAX = 1
+const GHOST_RETRY_MAX = 2
+
+const WRITE_TOOLS = new Set(['resume_update', 'skill_update', 'goal_create', 'goal_update', 'goal_delete', 'practice_save', 'activity_log'])
+const READ_TOOLS = new Set(['resume_list', 'resume_get', 'skill_list', 'goal_list', 'practice_history'])
+const CLAIM_VERBS = ['updated', 'improved', 'added', 'created', 'changed', 'deleted', 'saved', 'set', 'removed', 'fixed', 'wrote', 'modified', 'reviewed', 'analyzed', 'generated', 'built']
+const DONE_WORDS = ['done', 'completed', 'finished']
 
 const SYSTEM_PROMPT = 'You are a Career Action Orchestrator. You have two modes:\n\n' +
 '**ACTION MODE** — When the user asks to create, update, add, or change something (goals, resumes, skills, etc.):\n' +
@@ -179,15 +184,23 @@ export async function orchestrate(
     if (msg.content) msgs.push({ role: 'assistant', content: msg.content })
 
     const newTools = allActions.length - actionsBefore
-    const lowerContent = (msg.content || '').toLowerCase()
-    const actionVerbs = ['updated', 'improved', 'added', 'created', 'changed', 'deleted', 'saved', 'set', 'removed', 'fixed', 'wrote', 'modified']
-    const claimsAction = actionVerbs.some(v => lowerContent.includes(v))
+    const lowerContent = (msg.content || '').toLowerCase().trim()
+    const claimsAction = CLAIM_VERBS.some(v => lowerContent.includes(v))
+    const isDismissive = DONE_WORDS.includes(lowerContent) || lowerContent.length < 15 && DONE_WORDS.some(w => lowerContent.includes(w))
 
-    if (newTools === 0 && claimsAction && ghostRetries < GHOST_RETRY_MAX) {
+    const hasRead = allActions.some(a => READ_TOOLS.has(a.tool))
+    const hasWrite = allActions.some(a => WRITE_TOOLS.has(a.tool))
+    const readsWithoutWrite = hasRead && !hasWrite
+
+    const shouldRetry = newTools === 0 && ghostRetries < GHOST_RETRY_MAX && (
+      claimsAction || (isDismissive && readsWithoutWrite)
+    )
+
+    if (shouldRetry) {
       ghostRetries++
       msgs.push({
         role: 'system',
-        content: 'You claimed to have made changes but did not call any tool. You MUST call the appropriate tool to actually perform the change before responding.',
+        content: 'You claimed to have made changes but did not call any write tool. You MUST call the appropriate write tool (resume_update, skill_update, goal_create, etc.) to actually perform the change before responding.',
       })
       emptyTurns = 0
       continue

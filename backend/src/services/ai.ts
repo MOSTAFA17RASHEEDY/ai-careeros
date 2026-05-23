@@ -7,7 +7,11 @@ const MAX_CONTEXT_CHARS = 12000
 const MAX_VISIBLE_MESSAGES = 8
 const MIN_INTERVAL_MS = 500
 const MAX_TOOL_TURNS = 6
-const GHOST_RETRY_MAX = 1
+const GHOST_RETRY_MAX = 2
+
+const WRITE_TOOLS_AI = new Set(['resume_update', 'skill_update', 'goal_create', 'goal_update', 'goal_delete', 'practice_save', 'activity_log'])
+const READ_TOOLS_AI = new Set(['resume_list', 'resume_get', 'skill_list', 'goal_list', 'practice_history'])
+const DONE_WORDS_AI = ['done', 'completed', 'finished']
 
 const SYSTEM_PROMPTS: Record<string, string> = {
   'career-coach': `You are CareerCoach, an expert career advisor for software engineers. You help with career growth, salary negotiation, and professional development.
@@ -211,14 +215,23 @@ async function callGroqWithTools(
     }
 
     const newTools = actions.length - actionsBefore
-    const lowerContent = (msg.content || '').toLowerCase()
+    const lowerContent = (msg.content || '').toLowerCase().trim()
     const claimsAction = ACTION_VERBS.some(v => lowerContent.includes(v))
+    const isDismissive = DONE_WORDS_AI.includes(lowerContent) || lowerContent.length < 15 && DONE_WORDS_AI.some(w => lowerContent.includes(w))
 
-    if (newTools === 0 && claimsAction && ghostRetries < GHOST_RETRY_MAX) {
+    const hasRead = actions.some(a => READ_TOOLS_AI.has(a.tool))
+    const hasWrite = actions.some(a => WRITE_TOOLS_AI.has(a.tool))
+    const readsWithoutWrite = hasRead && !hasWrite
+
+    const shouldRetry = newTools === 0 && ghostRetries < GHOST_RETRY_MAX && (
+      claimsAction || (isDismissive && readsWithoutWrite)
+    )
+
+    if (shouldRetry) {
       ghostRetries++
       messages.push({
         role: 'system',
-        content: 'You claimed to have made changes but did not call any tool. You MUST call the appropriate tool to actually perform the change before responding.',
+        content: 'You claimed to have made changes but did not call any write tool. You MUST call the appropriate write tool (resume_update, skill_update, goal_create, etc.) to actually perform the change before responding.',
       })
       emptyTurns = 0
       continue
